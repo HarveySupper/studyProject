@@ -50,5 +50,3 @@ bun run dev
 - Nuxt 4 - 全栈框架
 - MySQL2 - MySQL 数据库驱动
 - Bun - JavaScript 运行时和包管理器
-
-jhhhhhh

@@ -1,4 +1,3 @@
-import { success } from 'zod'
 import { getConnection } from '../utils/db'
 
 export default defineEventHandler(async (event) => {
