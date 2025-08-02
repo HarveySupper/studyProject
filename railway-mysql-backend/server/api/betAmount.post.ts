@@ -75,19 +75,19 @@ export default defineEventHandler(async (event) => {
       }
     }
     // 获取用户信息
-    const [user]: [any[], any]= await connection.query('SELECT * FROM gameRecord WHERE userId = ?', [userId])
+    const [user]: [any[], any] = await connection.query('SELECT * FROM gameRecord WHERE userId = ?', [userId])
     // 如果用户不存在
     if (!user || user.length <= 0) {
-      await connection.query('INSERT INTO gameRecord (userId, betAmount) VALUES (?, ?)', [userId, betAmount])
+      await connection.execute('INSERT INTO gameRecord (userId, betAmount) VALUES (?, ?)', [userId, betAmount])
     }
     // 如果用户存在，更新投注金额
     else {
-      await connection.query('UPDATE gameRecord SET betAmount = betAmount + ? WHERE userId = ?', [betAmount, userId])
+      await connection.execute('UPDATE gameRecord SET betAmount = betAmount + ? WHERE userId = ?', [betAmount, userId])
     }
 
     return {
-        success: true,
-        message: '投注金额更新成功'
+      success: true,
+      message: '投注金额更新成功'
     }
   } catch (error) {
     return {
