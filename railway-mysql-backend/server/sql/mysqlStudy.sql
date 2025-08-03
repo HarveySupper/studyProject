@@ -239,3 +239,146 @@ FOR EACH ROW
 BEGIN
   SET NEW.totalBet = NEW.subBet + NEW.teamBet;
 END ;
+
+CREATE TABLE IF NOT EXISTS newgameRcord (
+    userId INT(11) NOT NULL,
+    inviteId INT(11),
+    gameType VARCHAR(4) NOT NULL DEFAULT 'slot',
+    betAmount INT(10) NOT NULL DEFAULT 0,
+    validBetAmount INT(10) NOT NULL DEFAULT 0,
+    countValidBetWay VARCHAR(4) NOT NULL DEFAULT '按投注',
+    betDay DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE gameRecord
+MODIFY COLUMN countValidBetWay VARCHAR(9);
+
+ALTER TABLE gameRecord
+MODIFY COLUMN countValidBetWay ENUM('byBet', 'byWinLose') NOT NULL DEFAULT 'byBet',
+ADD COLUMN gameResult DECIMAL(10) DEFAULT 0 COMMENT '游戏输赢金额，正为赢，负为输';
+
+UPDATE gameRecord
+SET countValidBetWay = CASE
+  WHEN countValidBetWay = '按投注' THEN 'byBet'
+  WHEN countValidBetWay = '按输赢' THEN 'byWinLose'
+  ELSE NULL
+END;
+
+UPDATE gameRecord
+SET countValidBetWay = 'byBet'
+
+ALTER TABLE gameRecord
+MODIFY COLUMN gameResult DECIMAL(10,2) DEFAULT 0 COMMENT '游戏输赢金额，正为赢，负为输' AFTER countValidBetWay;
+
+ALTER TABLE gameRecord
+MODIFY COLUMN createdAt DATETIME DEFAULT CURRENT_TIMESTAMP AFTER gameResult;
+
+ALTER TABLE gameRecord
+MODIFY COLUMN gameResult INT(10) DEFAULT 0 COMMENT '游戏输赢金额，正为赢，负为输' AFTER countValidBetWay;
+
+ALTER TABLE gameRecord
+MODIFY COLUMN betDay DATETIME AFTER gameResult;
+
+ALTER TABLE gameRecord
+ADD COLUMN gameVendor ENUM('PP','FaChai','POPOK','G759','CP','Spribe','Evolution','JBD','Evoplay','CQ9','Tada','PG') 
+AFTER inviteId;
+-- 先填 fish 类型的（只用 Tada）
+UPDATE gameRecord
+SET gameVendor = 'Tada'
+WHERE `gameTYpe` = 'fish';
+
+-- 再填 slot 类型的（从多个厂商中随机一个）
+UPDATE gameRecord
+SET gameVendor = ELT(FLOOR(1 + RAND() * 11),
+  'PP','FaChai','POPOK','G759','CP','Spribe',
+  'Evolution','JBD','Evoplay','CQ9','PG')
+WHERE gameTYpe = 'slot';
+
+ALTER TABLE gameRecord
+CHANGE COLUMN gameTYpe gameType ENUM('slot', 'fish', 'live', 'card') NOT NULL COMMENT '游戏类型';
+
+DELIMITER $$
+
+ALTER TABLE gameRecord
+ADD COLUMN id INT AUTO_INCREMENT PRIMARY KEY FIRST;
+
+DELIMITER $$
+
+CREATE TRIGGER set_valid_bet_amount_on_insert
+BEFORE INSERT ON gameRecord
+FOR EACH ROW
+BEGIN
+  IF NEW.countValidBetWay = 'byBet' THEN
+    SET NEW.validBetAmount = NEW.betAmount;
+  ELSEIF NEW.countValidBetWay = 'byWinLose' THEN
+    SET NEW.validBetAmount = ABS(NEW.gameResult);
+  END IF;
+END$$
+
+DELIMITER ;
+DROP TRIGGER IF EXISTS set_valid_strategy_on_insert;= 'gameRecord';
+
+SHOW TRIGGERS WHERE `Table` = 'gameRecord'
+
+ALTER TABLE gameRecord
+CHANGE validBetStrategy countValidBetWay ENUM('byBet', 'byWinLose') NOT NULL DEFAULT 'byBet' COMMENT '计算有效投注方式';
+
+DELIMITER $$
+
+CREATE TRIGGER set_valid_bet_way_by_vendor_on_update
+BEFORE UPDATE ON gameRecord
+FOR EACH ROW
+BEGIN
+  IF NEW.gameVendor = 'Spribe' THEN
+    SET NEW.countValidBetWay = 'byWinLose';
+  ELSE
+    SET NEW.countValidBetWay = 'byBet';
+  END IF;
+END$$
+
+DELIMITER ;
+DELIMITER $$
+
+CREATE TRIGGER auto_fill_gameVendor_gameType_update
+BEFORE UPDATE ON gameRecord
+FOR EACH ROW
+BEGIN
+  -- 如果 gameVendor 或 gameType 为空，随机合法组合
+  IF NEW.gameVendor IS NULL OR NEW.gameVendor = ''
+     OR NEW.gameType IS NULL OR NEW.gameType = '' THEN
+
+    -- 生成一个随机合法组合
+    SET @rand := FLOOR(1 + RAND() * 13); -- 总共 13 个合法组合（按你之前列的）
+
+    CASE @rand
+      WHEN 1 THEN SET NEW.gameVendor = 'PG';       SET NEW.gameType = 'slot';
+      WHEN 2 THEN SET NEW.gameVendor = 'Spribe';   SET NEW.gameType = 'slot';
+      WHEN 3 THEN SET NEW.gameVendor = 'Evolution';SET NEW.gameType = 'casino';
+      WHEN 4 THEN SET NEW.gameVendor = 'Tada';     SET NEW.gameType = 'slot';
+      WHEN 5 THEN SET NEW.gameVendor = 'Tada';     SET NEW.gameType = 'fishing';
+      WHEN 6 THEN SET NEW.gameVendor = 'Tada';     SET NEW.gameType = 'card';
+      WHEN 7 THEN SET NEW.gameVendor = 'FaChai';   SET NEW.gameType = 'slot';
+      WHEN 8 THEN SET NEW.gameVendor = 'POPOK';    SET NEW.gameType = 'slot';
+      WHEN 9 THEN SET NEW.gameVendor = 'G759';     SET NEW.gameType = 'slot';
+      WHEN 10 THEN SET NEW.gameVendor = 'CP';      SET NEW.gameType = 'slot';
+      WHEN 11 THEN SET NEW.gameVendor = 'JBD';     SET NEW.gameType = 'slot';
+      WHEN 12 THEN SET NEW.gameVendor = 'Evoplay'; SET NEW.gameType = 'slot';
+      WHEN 13 THEN SET NEW.gameVendor = 'CQ9';     SET NEW.gameType = 'slot';
+    END CASE;
+
+  END IF;
+END $$
+
+DELIMITER ;
+
+SELECT * FROM `agencyRelation` WHERE `inviteId` != 18388733
+    // 直属查询
+
+SELECT *
+FROM `agencyRelation`
+WHERE
+    `topId` = 18388733 AND `inviteId` != 18388733
+    // 团队查询
+
+SELECT * FROM `agencyRelation` WHERE `topId` != 18388733
+    // 通过顶级查询代理线所有人
+

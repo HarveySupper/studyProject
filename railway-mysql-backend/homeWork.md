@@ -83,3 +83,43 @@
 1. 整理gameRecord表，让gameRecord表内的数据功能更单一。
 2. 设计代理关系表，需要做到可查询整条代理线所有用户、某个用户的所有直属下级、某个用户的所有团队下级。
 3. 写出一个语句，统计某个用户对应游戏类型的团队业绩、直属业绩和总业绩。
+
+# 实现需求
+1. 整理gameRecord表
+   - 目前表内有自增id, 用户id, 邀请id, 游戏厂商，游戏类型， 投注金额， 计算有效投注方式，游戏输赢，下注时间
+   - 自增id:由于该表是用来记录每一局游戏的游戏对局记录表，可能用户id会重复出现在多行 该项不用填
+   - 邀请id:接口有做限制，传进来的邀请id必须是表里已存在的用户id 该项可不填
+   - 游戏厂商与游戏类型不传时，默认会随机填入一个厂商（厂商内容已提供，且限制对应厂商有的游戏类型，根据该限制进行随机填入）该项可不填
+   - 游戏类型，未传时，会根据 NEW.gameVendor，从允许的类型里随机挑一个gameType填入。该项可不填
+   - 投注金额，接口有做限制为正整数
+   - 计算有效投注方式，根据游戏厂商来默认传值，接口插入新数据时，该项可不填
+   - 游戏输赢，想做个按返奖率的，但是未能成功实现，不知道哪个步骤有问题，有尝试函数调用，好像不行，需要帮助
+   - 下注时间没变，默认当前时间戳
+  
+ 2. 代理关系表 
+   - 可查询整条代理线所有用户
+  SELECT * FROM agencyRelation WHERE topId != 18388733
+
+   - 某个用户的所有直属下级
+  SELECT * FROM agencyRelation  WHERE inviteId != 18388733
+
+   - 某个用户的所有团队下级。
+  SELECT *
+  FROM agencyRelation
+  WHERE
+  topId = 18388733 AND inviteId != 18388733
+  
+ 3. 写出一个语句
+  - 统计某个用户对应游戏类型的团队业绩、直属业绩和总业绩。
+SELECT gameRecord * FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'slot'
+  // 电子
+  SELECT SUM(validBetAmount) AS totalBetAmount1 FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'slot'
+
+  // 捕鱼
+  SELECT SUM(validBetAmount) AS totalBetAmount2 FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'fish'
+
+  // 棋牌
+  SELECT SUM(validBetAmount) AS totalBetAmount3 FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'card'
+
+  // 视讯
+  SELECT SUM(validBetAmount) AS totalBetAmount4 FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'casino'
