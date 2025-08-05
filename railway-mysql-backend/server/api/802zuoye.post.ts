@@ -1,13 +1,16 @@
 import { getConnection } from '../utils/db'
+import { vendorReturnRateMap, generateGameResult } from '../utils/rtp'
 
 export default defineEventHandler(async (event) => {
     try {
         const body = await readBody(event)
-        const { userId, inviteId, betAmount } = body
+        const { userId, inviteId, betAmount, gameVendor } = body
         // return {
-        //     userId, inviteId, betAmount
+        //     userId, inviteId, betAmount, gameVendor
         // }
         const connection = await getConnection()
+        // const returnRate = vendorReturnRateMap[gameVendor] || 0.98
+        // const gameResult = generateGameResult(betAmount, returnRate)
 
         if (!userId || userId === ' ') {
             return {
@@ -16,14 +19,14 @@ export default defineEventHandler(async (event) => {
             }
         }
 
-        if (!Number.isInteger(userId) || typeof betAmount !== 'number' || betAmount <= 0) {
+        if (!Number.isInteger(userId) || typeof userId !== 'number' || userId <= 0) {
             return {
                 success: false,
                 message: '用户ID必须是正整数（数字类型）'
             }
         }
 
-        if (!Number.isInteger(betAmount) || typeof userId !== 'number' || userId <= 0) {
+        if (!Number.isInteger(betAmount) || typeof betAmount !== 'number' || betAmount <= 0) {
             return {
                 success: false,
                 message: '金额必须是正整数（数字类型）'
@@ -53,8 +56,8 @@ export default defineEventHandler(async (event) => {
 
                 // 邀请人存在，插入新数据带邀请ID
                 await connection.query(
-                    ` INSERT INTO gameRecord (userId, inviteId, betAmount) VALUES (?, ?, ?)`,
-                    [userId, inviteId, betAmount]
+                    ` INSERT INTO gameRecord (userId, inviteId, betAmount, gameVendor) VALUES (?, ?, ?, ?)`,
+                    [userId, inviteId, betAmount, gameVendor]
                 )
                 return {
                     success: true,
@@ -64,8 +67,8 @@ export default defineEventHandler(async (event) => {
             } else {
                 // 没有邀请人，插入不带 inviteId 的记录
                 await connection.query(
-                    ` INSERT INTO gameRecord (userId, betAmount) VALUES (?, ?)`,
-                    [userId, betAmount]
+                    ` INSERT INTO gameRecord (userId, betAmount, gameVendor) VALUES (?, ?, ?)`,
+                    [userId, betAmount, gameVendor]
                 )
                 return {
                     success: true,

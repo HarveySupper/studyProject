@@ -370,15 +370,23 @@ END $$
 
 DELIMITER ;
 
-SELECT * FROM `agencyRelation` WHERE `inviteId` != 18388733
-    // 直属查询
+SELECT * FROM `agencyRelation` WHERE `inviteId` = 18388733
+
 
 SELECT *
 FROM `agencyRelation`
 WHERE
-    `topId` = 18388733 AND `inviteId` != 18388733
-    // 团队查询
+`topId` = 18388733 AND `inviteId` != 18388733
 
-SELECT * FROM `agencyRelation` WHERE `topId` != 18388733
-    // 通过顶级查询代理线所有人
+SELECT * FROM `agencyRelation` WHERE `topId` = 18388733
+
+
+SELECT gr.gameType,
+SUM(CASE WHEN ar.inviteId = ar.`topId` THEN gr.validBetAmount ELSE 0 END) AS direct_total,
+SUM(CASE WHEN ar.inviteId != ar.`topId` THEN gr.validBetAmount ELSE 0 END) AS indirect_total,
+SUM(gr.validBetAmount) AS total
+FROM agencyRelation ar
+LEFT JOIN gameRecord gr ON gr.userId = ar.userId
+WHERE ar.`topId` = 18388733
+GROUP BY gr.gameType
 

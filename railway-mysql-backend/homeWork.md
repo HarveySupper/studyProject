@@ -98,22 +98,43 @@
   
  2. 代理关系表 
    - 可查询整条代理线所有用户
-  SELECT * FROM agencyRelation WHERE topId != 18388733
+  `SELECT * FROM agencyRelation WHERE topId = ?`,
+  [topId]
 
    - 某个用户的所有直属下级
-  SELECT * FROM agencyRelation  WHERE inviteId != 18388733
+  `SELECT * FROM agencyRelation  WHERE inviteId = ?`,
+  [inviteId]
 
-   - 某个用户的所有团队下级。
-  SELECT *
+   - 某个用户的所有团队下级(除直属)。topId, inviteId 需要是同一个会员id
+  `SELECT *
   FROM agencyRelation
   WHERE
-  topId = 18388733 AND inviteId != 18388733
+  topId = ? AND inviteId != ?`,
+  [topId, inviteId]
+
   
  3. 写出一个语句
   - 统计某个用户对应游戏类型的团队业绩、直属业绩和总业绩。
-SELECT gameRecord * FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'slot'
-  // 电子
-  SELECT SUM(validBetAmount) AS totalBetAmount1 FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'slot'
+- 新语法(有条件地求和)：SUM(CASE WHEN 条件 THEN 数值 ELSE 0 END)
+   对满足某个条件的行，才把指定的值加进总和；不满足的就加 0。
+   ` SELECT gr.gameType,
+    SUM(CASE WHEN ar.inviteId = ar.topId THEN gr.validBetAmount ELSE 0 END) AS direct_total,
+    SUM(CASE WHEN ar.inviteId != ar.topId THEN gr.validBetAmount ELSE 0 END) AS indirect_total,
+    SUM(gr.validBetAmount) AS total
+    FROM agencyRelation ar
+    LEFT JOIN gameRecord gr ON gr.userId = ar.userId
+    WHERE ar.topId = ?
+    GROUP BY gr.gameType `,
+    [topId]
+
+// “主表”写在 FROM 位置，再用 LEFT JOIN 连接“次表”
+-  WHERE 放后面，不可写进JOIN ... ON 
+SELECT SUM(gr.validBetAmount) AS total
+FROM agencyRelation ar
+LEFT JOIN gameRecord gr ON gr.userId = ar.userId AND gr.gameType = ?
+WHERE ar.inviteId = ?
+[gameType, inviteId]
+
 
   // 捕鱼
   SELECT SUM(validBetAmount) AS totalBetAmount2 FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'fish'
@@ -123,3 +144,21 @@ SELECT gameRecord * FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.user
 
   // 视讯
   SELECT SUM(validBetAmount) AS totalBetAmount4 FROM gameRecord RIGHT JOIN agencyRelation ON gameRecord.userId = agencyRelation.userId WHERE agencyRelation.inviteId = ? AND gameRecord.gameType = 'casino'
+
+
+找 183887333 的直属 和团队，
+只能是邀请ID 不能拿topid
+找他的直属有谁。找他的团队有谁。
+
+890099 找到他的所有上级 先写一个句子找到topid,这样才能用topID
+尽量只用一个？问号(明文) 外部传入的东西叫明文
+
+group by
+
+创了两个表，一个新的游戏记录表
+一个代理关系等级表，
+
+代理关系等级表：该条线的顶级id，等级为0，把每个层级进行排序，排序后有，userId subId topId level
+可通过这个表进行查找：从下往上找该条线的人
+
+新表 math.abs()绝对值。 插入投注记录
