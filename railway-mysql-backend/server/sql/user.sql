@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS agencyRelation (
     topId INT NOT NULL
 );
 
-DROP TABLE IF EXISTS agencyRelation;
+DROP TABLE IF EXISTS `userInfo`;
+
 
 INSERT INTO
     agencyRelation (userId, inviteId, topId)
@@ -49,3 +50,11 @@ FROM
 WHERE
     `agencyRelation`.`inviteId` = 18388733
     AND `gameRecord`.`gameTYpe` = 'slot';
+
+CREATE TABLE IF NOT EXISTS userInfo (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userId INT NOT NULL,
+    balance BIGINT DEFAULT 0,
+    registerTime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
