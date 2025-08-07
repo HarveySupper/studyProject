@@ -162,3 +162,9 @@ group by
 可通过这个表进行查找：从下往上找该条线的人
 
 新表 math.abs()绝对值。 插入投注记录
+
+sub = 邀请id
+新人 = [查 sub = 邀请id 的每个 userId，插入userId 和查询结果userID对应的 level + 1] 
+1.查数组 以邀请ID查表内的SUBID，找到 sub = 邀请id 的数组，将该数组的每行插入+1（插入时 userid不变，subID = 新注册ID topid 不变， level = 数组内原level数+1。
+2，另外还需插入一条数组 userId位置 插 邀请ID，  sub位置 插 注册id  ， topid不变 level= 1 
+

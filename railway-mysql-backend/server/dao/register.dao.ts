@@ -1,5 +1,5 @@
 /**
- * 用户注册时，若未传邀请ID则直接注册，
+ * 用户注册时，若未传邀请ID则直接注册，!! 主要是校验，合适就注册
  * 若有传邀请ID则判断邀请ID：不能为0，必须符合有效id规则，必须能在用户列表找到该邀请ID
  * @param inviteId 
  */
@@ -30,7 +30,7 @@ export async function userRegister(inviteId?: number) {
  * @returns true 就是通过   false 就是不通过验证
  * 正则表达实例
  */
-export function isValidId(input: number): boolean {
+export function isValidId(input: number | string): boolean {
     const regex = /^[1-9]\d{5,10}$/;
     return regex.test(String(input))
 }
@@ -102,6 +102,31 @@ export async function register(inviteId?: number) {
            `INSERT INTO userInfo (userId, inviteId) VALUES(?,?)`,
            [userId, inviteId ?? null] 
         )
+    } catch (error) {
+        console.error('注册用户失败：', error);
+        throw new Error('注册用户失败')
+    }
+}
+
+// 插入 一条数组 userId位置 插 邀请ID，  sub位置 插 注册id  ， topid不变 level= 1 
+export async function addAgencyRelation(userId:number, inviteId:number) {
+    try {
+    const connection = await getConnection()
+    const [sub]: [any[], any] = await connection.query(
+        ` SELECT * FROM agencyRelationLevel WHERE subId = ?`,
+        [inviteId]
+    )
+    await connection.execute(
+        `INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES(?,?,?,?)`,
+        [inviteId, userId, sub[0].topId, 1] 
+    )
+    for (let i = 0; i < sub.length; i++) {
+        const item = sub[i];
+        await connection.execute(
+           `INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES(?,?,?,?)`,
+           [item.userId, userId, item.topId, item.level + 1] 
+        )
+    }
     } catch (error) {
         console.error('注册用户失败：', error);
         throw new Error('注册用户失败')
