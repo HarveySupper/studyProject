@@ -113,11 +113,11 @@ export async function addAgencyRelation(userId:number, inviteId:number) {
     try {
     const connection = await getConnection()
     const [sub]: [any[], any] = await connection.query(
-        ` SELECT * FROM agencyRelationLevel WHERE subId = ?`,
+        ` SELECT * FROM agencyRelationLevel WHERE subId = ? `,
         [inviteId]
     )
     await connection.execute(
-        `INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES(?,?,?,?)`,
+        ` INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES(?,?,?,?) `,
         [inviteId, userId, sub[0].topId, 1] 
     )
     for (let i = 0; i < sub.length; i++) {
