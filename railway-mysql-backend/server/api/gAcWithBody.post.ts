@@ -1,4 +1,4 @@
-import { getConnection } from '../utils/db'
+// import { getConnection } from '../utils/db'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
     await connection.execute(
       ` INSERT INTO commission (userId, inviteId) VALUES (?, ?) `,
       // 使用参数化查询防止 SQL 注入
-      [userId,inviteId]
+      [userId, inviteId]
     )
     return {
       success: true,

@@ -1,4 +1,4 @@
-import { getConnection } from '../utils/db'
+// import { getConnection } from '../utils/db'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -29,20 +29,20 @@ export default defineEventHandler(async (event) => {
     let validBetAmount = 0
 
     if (gameVendor === 'Spribe') {
-      validBetAmount = Math.abs(winAmount) 
+      validBetAmount = Math.abs(winAmount)
     } else {
       validBetAmount = betAmount
     }
 
     await connection.query(
-        ` INSERT INTO gameRecordNew (userId, betAmount, gameVendor, gameType, validBetAmount, winAmount) VALUES (?, ?, ?,?,?, ?)`,
-        [userId, betAmount, gameVendor, gameType, validBetAmount, winAmount]
-      )
-      return {
-        success: true,
-        message: '投注记录已更新',
-      }
-    
+      ` INSERT INTO gameRecordNew (userId, betAmount, gameVendor, gameType, validBetAmount, winAmount) VALUES (?, ?, ?,?,?, ?)`,
+      [userId, betAmount, gameVendor, gameType, validBetAmount, winAmount]
+    )
+    return {
+      success: true,
+      message: '投注记录已更新',
+    }
+
   } catch (error) {
     return {
       success: false,

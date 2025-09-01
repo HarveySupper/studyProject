@@ -1,10 +1,10 @@
-import { getConnection } from '../utils/db'
+// import { getConnection } from '../utils/db'
 
 export default defineEventHandler(async (event) => {
   try {
     const connection = await getConnection()
     const [rows] = await connection.execute('SELECT 1 as test')
-    
+
     return {
       success: true,
       message: 'Database connection successful',
