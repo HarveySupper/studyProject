@@ -17,7 +17,7 @@ export async function userRegister(inviteId?: number) {
         throw new Error(`邀请id不符合6-11为正整数规则`);
     }
     // 3. 检测邀请id是否在用户表中
-    if(inviteId && await uniqueId(inviteId)) {
+    if (inviteId && await uniqueId(inviteId)) {
         throw new Error(`邀请用户id对应用户不存在`);
     }
     await register(inviteId)
@@ -74,13 +74,13 @@ export async function uniqueId(userId: number) {
 export async function register(inviteId?: number) {
     const userId = await randomUserId()
 
-    if(!userId) {
+    if (!userId) {
         throw new Error('生成用户ID失败');
     }
     try {
         await query(
-           'INSERT INTO userInfo (userId, inviteId) VALUES($1, $2)',
-           [userId, inviteId ?? null] 
+            'INSERT INTO userInfo (userId, inviteId) VALUES($1, $2)',
+            [userId, inviteId ?? null]
         )
     } catch (error) {
         console.error('注册用户失败：', error);
@@ -93,25 +93,25 @@ export async function addAgencyRelation(userId: number, inviteId: number) {
     const client = await getClient()
     try {
         await client.query('BEGIN')
-        
+
         const subResult = await client.query(
             'SELECT * FROM agencyRelationLevel WHERE subId = $1',
             [inviteId]
         )
-        
+
         await client.query(
             'INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES($1, $2, $3, $4)',
-            [inviteId, userId, subResult.rows[0].topId, 1] 
+            [inviteId, userId, subResult.rows[0].topId, 1]
         )
-        
+
         for (let i = 0; i < subResult.rows.length; i++) {
             const item = subResult.rows[i];
             await client.query(
-               'INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES($1, $2, $3, $4)',
-               [item.userId, userId, item.topId, item.level + 1] 
+                'INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES($1, $2, $3, $4)',
+                [item.userId, userId, item.topId, item.level]
             )
         }
-        
+
         await client.query('COMMIT')
     } catch (error) {
         await client.query('ROLLBACK')

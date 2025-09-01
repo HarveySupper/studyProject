@@ -27,7 +27,7 @@ export async function insertExample() {
       { username: 'john_doe', email: 'john@example.com', password: 'hashed_password' }
     ])
     .select()
-  
+
   if (error) throw error
   return data
 
@@ -47,14 +47,14 @@ export async function selectExample() {
   const { data: allUsers } = await supabase
     .from('users')
     .select('*')
-  
+
   // 条件查询
   const { data: specificUser } = await supabase
     .from('users')
     .select('id, username, email')
     .eq('username', 'john_doe')
     .single()
-  
+
   // 复杂查询：关联查询
   const { data: usersWithPosts } = await supabase
     .from('users')
@@ -67,14 +67,14 @@ export async function selectExample() {
         content
       )
     `)
-  
+
   // 分页查询
   const { data: paginatedUsers } = await supabase
     .from('users')
     .select('*')
     .range(0, 9) // 获取前10条
     .order('created_at', { ascending: false })
-  
+
   return { allUsers, specificUser, usersWithPosts, paginatedUsers }
 }
 
@@ -88,14 +88,14 @@ export async function updateExample() {
     .update({ email: 'newemail@example.com' })
     .eq('username', 'john_doe')
     .select()
-  
+
   // 批量更新
   const { data: batchUpdate } = await supabase
     .from('posts')
     .update({ status: 'published' })
     .in('id', [1, 2, 3])
     .select()
-  
+
   return { data, batchUpdate }
 }
 
@@ -108,13 +108,13 @@ export async function deleteExample() {
     .from('users')
     .delete()
     .eq('id', 1)
-  
+
   // 条件删除
   const { error: conditionalDelete } = await supabase
     .from('posts')
     .delete()
     .lt('created_at', new Date('2024-01-01').toISOString())
-  
+
   return { error, conditionalDelete }
 }
 
@@ -129,7 +129,7 @@ export async function upsertExample() {
       { username: 'new_user', email: 'new@example.com' }
     ])
     .select()
-  
+
   return data
 }
 
@@ -144,38 +144,38 @@ export async function filterExample() {
     .from('users')
     .select('*')
     .eq('username', 'john_doe')
-  
+
   // 不等于
   const { data: neq } = await supabase
     .from('users')
     .select('*')
     .neq('status', 'inactive')
-  
+
   // 大于/小于
   const { data: gt } = await supabase
     .from('posts')
     .select('*')
     .gt('views', 100)
     .lt('views', 1000)
-  
+
   // IN 查询
   const { data: inQuery } = await supabase
     .from('users')
     .select('*')
     .in('id', [1, 2, 3])
-  
+
   // LIKE 查询
   const { data: like } = await supabase
     .from('users')
     .select('*')
     .like('email', '%@gmail.com')
-  
+
   // IS NULL
   const { data: isNull } = await supabase
     .from('users')
     .select('*')
     .is('deleted_at', null)
-  
+
   return { eq, neq, gt, inQuery, like, isNull }
 }
 
@@ -187,7 +187,7 @@ export async function aggregateExample() {
   const { count } = await supabase
     .from('users')
     .select('*', { count: 'exact', head: true })
-  
+
   // 使用原生SQL进行复杂聚合
   const result = await query(`
     SELECT 
@@ -197,7 +197,7 @@ export async function aggregateExample() {
       MIN(created_at) as first_user
     FROM users
   `)
-  
+
   return { count, aggregates: result.rows[0] }
 }
 
@@ -208,29 +208,29 @@ export async function aggregateExample() {
  */
 export async function transactionExample() {
   const client = await getClient()
-  
+
   try {
     await client.query('BEGIN')
-    
+
     // 创建用户
     const userResult = await client.query(
       'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id',
       ['transaction_user', 'trans@example.com', 'password']
     )
     const userId = userResult.rows[0].id
-    
+
     // 创建相关的profile
     await client.query(
       'INSERT INTO profiles (user_id, full_name, bio) VALUES ($1, $2, $3)',
       [userId, 'Transaction User', 'Created in transaction']
     )
-    
+
     // 记录日志
     await client.query(
       'INSERT INTO activity_logs (user_id, action) VALUES ($1, $2)',
       [userId, 'user_created']
     )
-    
+
     await client.query('COMMIT')
     return { success: true, userId }
   } catch (error) {
@@ -250,14 +250,14 @@ export function realtimeExample() {
   // 订阅所有变化
   const allChanges = supabase
     .channel('all-changes')
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'posts' }, 
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'posts' },
       (payload) => {
         console.log('Change received:', payload)
       }
     )
     .subscribe()
-  
+
   // 订阅特定事件
   const insertOnly = supabase
     .channel('insert-only')
@@ -268,14 +268,14 @@ export function realtimeExample() {
       }
     )
     .subscribe()
-  
+
   // 带过滤条件的订阅
   const filteredSub = supabase
     .channel('filtered-posts')
     .on('postgres_changes',
-      { 
-        event: 'UPDATE', 
-        schema: 'public', 
+      {
+        event: 'UPDATE',
+        schema: 'public',
         table: 'posts',
         filter: 'status=eq.published'
       },
@@ -284,10 +284,10 @@ export function realtimeExample() {
       }
     )
     .subscribe()
-  
+
   // 取消订阅
   // allChanges.unsubscribe()
-  
+
   return { allChanges, insertOnly, filteredSub }
 }
 
@@ -299,21 +299,21 @@ export function realtimeExample() {
 export async function storageExample() {
   // 上传文件
   const file = new File(['Hello World'], 'hello.txt', { type: 'text/plain' })
-  
+
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from('avatars')
     .upload('public/hello.txt', file)
-  
+
   // 获取公开URL
   const { data: publicUrl } = supabase.storage
     .from('avatars')
     .getPublicUrl('public/hello.txt')
-  
+
   // 下载文件
   const { data: downloadData, error: downloadError } = await supabase.storage
     .from('avatars')
     .download('public/hello.txt')
-  
+
   // 列出文件
   const { data: files, error: listError } = await supabase.storage
     .from('avatars')
@@ -321,12 +321,12 @@ export async function storageExample() {
       limit: 100,
       offset: 0
     })
-  
+
   // 删除文件
   const { data: deleteData, error: deleteError } = await supabase.storage
     .from('avatars')
     .remove(['public/hello.txt'])
-  
+
   return { uploadData, publicUrl, files }
 }
 
@@ -339,14 +339,14 @@ export async function rpcExample() {
   // 调用存储过程或函数
   const { data, error } = await supabase
     .rpc('get_user_stats', { user_id: 1 })
-  
+
   // 带参数的RPC调用
   const { data: searchResults } = await supabase
-    .rpc('search_posts', { 
+    .rpc('search_posts', {
       search_query: 'typescript',
-      limit_count: 10 
+      limit_count: 10
     })
-  
+
   return { data, searchResults }
 }
 
@@ -361,20 +361,20 @@ export async function bulkInsertExample() {
     email: `user${i}@example.com`,
     password: 'hashed_password'
   }))
-  
+
   // 方法1: Supabase批量插入
   const { data, error } = await supabase
     .from('users')
     .insert(users)
     .select()
-  
+
   // 方法2: 使用原生PostgreSQL COPY命令（最快）
   const client = await getClient()
   try {
-    const values = users.map(u => 
+    const values = users.map(u =>
       `('${u.username}', '${u.email}', '${u.password}')`
     ).join(',')
-    
+
     await client.query(`
       INSERT INTO users (username, email, password) 
       VALUES ${values}
@@ -382,7 +382,7 @@ export async function bulkInsertExample() {
   } finally {
     client.release()
   }
-  
+
   return { inserted: users.length }
 }
 
@@ -397,7 +397,7 @@ export async function errorHandlingExample() {
       .from('users')
       .insert([{ username: 'test' }]) // 缺少必需字段
       .select()
-    
+
     if (error) {
       // Supabase错误处理
       console.error('Supabase error:', {
@@ -406,7 +406,7 @@ export async function errorHandlingExample() {
         hint: error.hint,
         code: error.code
       })
-      
+
       // 根据错误类型处理
       if (error.code === '23505') {
         throw new Error('用户名已存在')
@@ -416,7 +416,7 @@ export async function errorHandlingExample() {
         throw error
       }
     }
-    
+
     return data
   } catch (err) {
     // 全局错误处理
@@ -435,14 +435,14 @@ export async function performanceExample() {
   const { data: optimizedSelect } = await supabase
     .from('users')
     .select('id, username') // 不要用 select('*')
-  
+
   // 2. 使用索引提示
   const indexedQuery = await query(`
     SELECT * FROM users 
     WHERE email = $1 
     -- 确保email字段有索引
   `, ['test@example.com'])
-  
+
   // 3. 连接池复用
   const pool = getPool()
   const results = await Promise.all([
@@ -450,7 +450,7 @@ export async function performanceExample() {
     pool.query('SELECT COUNT(*) FROM posts'),
     pool.query('SELECT COUNT(*) FROM comments')
   ])
-  
+
   // 4. 使用EXPLAIN分析查询
   const explainResult = await query(`
     EXPLAIN ANALYZE 
@@ -459,9 +459,9 @@ export async function performanceExample() {
     JOIN posts p ON u.id = p.user_id 
     WHERE u.created_at > '2024-01-01'
   `)
-  
-  return { 
-    optimizedSelect, 
+
+  return {
+    optimizedSelect,
     indexedQuery: indexedQuery.rows,
     counts: results.map(r => r.rows[0].count),
     queryPlan: explainResult.rows
@@ -479,22 +479,22 @@ export async function validationExample() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return emailRegex.test(email)
   }
-  
+
   function sanitizeInput(input: string): string {
     // 防止SQL注入（虽然参数化查询已经安全）
     return input.replace(/[';\\]/g, '')
   }
-  
+
   // 使用验证
   const email = 'user@example.com'
   const username = "user'; DROP TABLE users;--"
-  
+
   if (!validateEmail(email)) {
     throw new Error('Invalid email format')
   }
-  
+
   const safeUsername = sanitizeInput(username)
-  
+
   // 安全插入
   const { data, error } = await supabase
     .from('users')
@@ -504,7 +504,7 @@ export async function validationExample() {
       password: 'hashed_password'
     }])
     .select()
-  
+
   return data
 }
 
