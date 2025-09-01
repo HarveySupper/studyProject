@@ -1,5 +1,5 @@
 // server/api/lianxi3.post.ts
-import { getConnection } from '../utils/db'
+// import { getConnection } from '../utils/db'
 import { vendorReturnRateMap, generateGameResult } from '../utils/rtp'
 
 export default defineEventHandler(async (event) => {

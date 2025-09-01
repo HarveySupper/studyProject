@@ -1,4 +1,4 @@
-import { getConnection } from '../utils/db'
+// import { getConnection } from '../utils/db'
 
 export default defineEventHandler(async (event) => {
     try {
@@ -13,17 +13,17 @@ export default defineEventHandler(async (event) => {
 
         await connection.execute(
             ` INSERT INTO commission (userId, inviteId) VALUES(?, ? ) `,
-             [userId, inviteId]
+            [userId, inviteId]
         )
 
         return {
-            success:true,
+            success: true,
             message: '注册成功'
         }
     } catch (error) {
         return {
             success: false,
-            error: error instanceof Error ? error.message: 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error'
         }
     }
 })

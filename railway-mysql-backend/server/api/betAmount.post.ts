@@ -1,4 +1,4 @@
-import { getConnection } from '../utils/db'
+// import { getConnection } from '../utils/db'
 
 /**
  * 需求：实现一个玩家下注接口，接口传入参数有两个，用户id和下注金额，要求做到以下三种情况：

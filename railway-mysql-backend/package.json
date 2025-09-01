@@ -11,16 +11,18 @@
   },
   "dependencies": {
     "@scalar/api-reference": "^1.32.10",
+    "@supabase/supabase-js": "^2.56.1",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
+    "@types/pg": "^8.15.5",
     "dotenv": "^17.2.1",
-    "mysql2": "^3.14.2",
     "nuxt": "latest",
+    "pg": "^8.16.3",
     "swagger-ui-dist": "^5.27.0",
     "trpc-nuxt": "^1.2.0",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
-    "zod": "^4.0.10"
+    "zod": "^4.1.5"
   },
   "module": "index.ts",
   "devDependencies": {

@@ -1,3 +1,5 @@
+import { query, getClient } from '../utils/db'
+
 /**
  * 用户注册时，若未传邀请ID则直接注册，!! 主要是校验，合适就注册
  * 若有传邀请ID则判断邀请ID：不能为0，必须符合有效id规则，必须能在用户列表找到该邀请ID
@@ -11,9 +13,6 @@ export async function userRegister(inviteId?: number) {
         throw new Error(`邀请id不能为0`);
     }
     // 2. 检测邀请id是否合规
-    // if (inviteId && !isValidId(inviteId.toString())) {
-    //     throw new Error(`邀请id不符合6-11为正整数规则`);
-    // }
     if (inviteId && !isValidId(inviteId)) {
         throw new Error(`邀请id不符合6-11为正整数规则`);
     }
@@ -34,29 +33,11 @@ export function isValidId(input: number | string): boolean {
     const regex = /^[1-9]\d{5,10}$/;
     return regex.test(String(input))
 }
-// export function isValidId(input: string | number): boolean {
-//     const regex = /^[1-9]\d{5,10}$/;
-//     return regex.test(input);
-// }
 
 /**
  * 生成符合规矩的随机id
  * @returns 用户ID
  */
-// export async function randomUserId() {
-//     const min = 100000
-//     const max = 999999999
-//     const count = 1000
-//     let valid = true
-//     let index = 0
-//     let userId = 0
-//     do {
-//         userId = min + Math.ceil(Math.random() * (max - min))
-//         valid = isValidId(userId.toString()) && await uniqueId(userId)
-//         index++
-//     } while (index < count && !valid);
-//     return userId
-// }
 export async function randomUserId() {
     const min = 100000
     const max = 999999999
@@ -71,18 +52,18 @@ export async function randomUserId() {
     } while (index < count && !valid);
     return userId
 }
+
 /**
  * 检测用户id是否存在userInfo表中
  * @param userId 
  * @returns true 用户不存在 false 用户存在
  */
-export async function uniqueId(userId:number) {
-    const connection = await getConnection()
-    const [user]: [any[], any] = await connection.query(
-        ` SELECT * FROM userInfo WHERE userId = ?`,
+export async function uniqueId(userId: number) {
+    const result = await query(
+        'SELECT * FROM userInfo WHERE userId = $1',
         [userId]
     )
-    return !user || user.length === 0
+    return !result.rows || result.rows.length === 0
 }
 
 /**
@@ -91,15 +72,14 @@ export async function uniqueId(userId:number) {
  * 调用方式后面要接()
  */
 export async function register(inviteId?: number) {
-    const connection = await getConnection()
     const userId = await randomUserId()
 
     if(!userId) {
         throw new Error('生成用户ID失败');
     }
     try {
-        await connection.execute(
-           `INSERT INTO userInfo (userId, inviteId) VALUES(?,?)`,
+        await query(
+           'INSERT INTO userInfo (userId, inviteId) VALUES($1, $2)',
            [userId, inviteId ?? null] 
         )
     } catch (error) {
@@ -109,26 +89,35 @@ export async function register(inviteId?: number) {
 }
 
 // 插入 一条数组 userId位置 插 邀请ID，  sub位置 插 注册id  ， topid不变 level= 1 
-export async function addAgencyRelation(userId:number, inviteId:number) {
+export async function addAgencyRelation(userId: number, inviteId: number) {
+    const client = await getClient()
     try {
-    const connection = await getConnection()
-    const [sub]: [any[], any] = await connection.query(
-        ` SELECT * FROM agencyRelationLevel WHERE subId = ?`,
-        [inviteId]
-    )
-    await connection.execute(
-        `INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES(?,?,?,?)`,
-        [inviteId, userId, sub[0].topId, 1] 
-    )
-    for (let i = 0; i < sub.length; i++) {
-        const item = sub[i];
-        await connection.execute(
-           `INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES(?,?,?,?)`,
-           [item.userId, userId, item.topId, item.level + 1] 
+        await client.query('BEGIN')
+        
+        const subResult = await client.query(
+            'SELECT * FROM agencyRelationLevel WHERE subId = $1',
+            [inviteId]
         )
-    }
+        
+        await client.query(
+            'INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES($1, $2, $3, $4)',
+            [inviteId, userId, subResult.rows[0].topId, 1] 
+        )
+        
+        for (let i = 0; i < subResult.rows.length; i++) {
+            const item = subResult.rows[i];
+            await client.query(
+               'INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES($1, $2, $3, $4)',
+               [item.userId, userId, item.topId, item.level + 1] 
+            )
+        }
+        
+        await client.query('COMMIT')
     } catch (error) {
+        await client.query('ROLLBACK')
         console.error('注册用户失败：', error);
         throw new Error('注册用户失败')
+    } finally {
+        client.release()
     }
 }
