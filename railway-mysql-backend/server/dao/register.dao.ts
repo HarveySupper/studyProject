@@ -5,22 +5,17 @@ import { query, getClient } from '../utils/db'
  * 若有传邀请ID则判断邀请ID：不能为0，必须符合有效id规则，必须能在用户列表找到该邀请ID
  * @param inviteId 
  */
-export async function userRegister(inviteId?: number) {
+export async function userRegister(phone: string, inviteId?: number) {
+    const isPhoneUnique = await uniquePhone(phone)
+    if (!isPhoneUnique) throw new Error(`手机号已注册`);
+
     // 如果没有传邀请id，直接注册
-    if (!inviteId) await register()
-    // 1. 校验参数
-    if (inviteId === 0) {
-        throw new Error(`邀请id不能为0`);
-    }
-    // 2. 检测邀请id是否合规
-    if (inviteId && !isValidId(inviteId)) {
-        throw new Error(`邀请id不符合6-11为正整数规则`);
-    }
+    if (!inviteId) return await register(phone)
     // 3. 检测邀请id是否在用户表中
     if (inviteId && await uniqueId(inviteId)) {
         throw new Error(`邀请用户id对应用户不存在`);
     }
-    await register(inviteId)
+    return await register(phone, inviteId)
 }
 
 /**
@@ -59,11 +54,28 @@ export async function randomUserId() {
  * @returns true 用户不存在 false 用户存在
  */
 export async function uniqueId(userId: number) {
-    const result = await query(
-        'SELECT * FROM userInfo WHERE userId = $1',
-        [userId]
-    )
-    return !result.rows || result.rows.length === 0
+    const { data, error } = await supabase
+        .from('users')
+        .select('userId')
+        .eq('userId', userId)
+        .maybeSingle()
+    if (error) throw error
+    return !data
+}
+
+/**
+ * 检测手机号是否在users表中
+ * @param phone 
+ * @returns true 用户不存在 false 用户存在
+ */
+export async function uniquePhone(phone: string) {
+    const { data, error } = await supabase
+        .from('users')
+        .select('phone')
+        .eq('phone', phone)
+        .maybeSingle()
+    if (error) throw error
+    return !data
 }
 
 /**
@@ -71,53 +83,64 @@ export async function uniqueId(userId: number) {
  * @param inviteId 可选的邀请人ID
  * 调用方式后面要接()
  */
-export async function register(inviteId?: number) {
+export async function register(phone: string, inviteId?: number) {
     const userId = await randomUserId()
 
     if (!userId) {
         throw new Error('生成用户ID失败');
     }
-    try {
-        await query(
-            'INSERT INTO userInfo (userId, inviteId) VALUES($1, $2)',
-            [userId, inviteId ?? null]
-        )
-    } catch (error) {
-        console.error('注册用户失败：', error);
-        throw new Error('注册用户失败')
+
+    const { error } = await supabase
+        .from('users')
+        .insert({
+            userId,
+            phone
+        })
+    if (error) throw error
+    if (!inviteId) {
+        const { error: insertAgencyError } = await supabase
+            .from('agencyRelation')
+            .insert({
+                userId,
+                subId: 0,
+                topId: userId,
+                level: 0
+            })
+        if (insertAgencyError) throw insertAgencyError
     }
+
+    if (inviteId) await addAgencyRelation(userId, inviteId)
+    return userId
 }
 
 // 插入 一条数组 userId位置 插 邀请ID，  sub位置 插 注册id  ， topid不变 level= 1 
 export async function addAgencyRelation(userId: number, inviteId: number) {
-    const client = await getClient()
-    try {
-        await client.query('BEGIN')
+    const { data: inviteInfo, error: selectError } = await supabase
+        .from('agencyRelation')
+        .select('*')
+        .eq('subId', inviteId)
+    if (selectError) throw selectError
 
-        const subResult = await client.query(
-            'SELECT * FROM agencyRelationLevel WHERE subId = $1',
-            [inviteId]
-        )
+    const { error: insertFirstError } = await supabase
+        .from(`agencyRelation`)
+        .insert({
+            userId: inviteId,
+            subId: userId,
+            topId: inviteInfo[0]?.topId || inviteId,
+            level: 1
+        })
+    if (insertFirstError) throw insertFirstError
 
-        await client.query(
-            'INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES($1, $2, $3, $4)',
-            [inviteId, userId, subResult.rows[0].topId, 1]
-        )
-
-        for (let i = 0; i < subResult.rows.length; i++) {
-            const item = subResult.rows[i];
-            await client.query(
-                'INSERT INTO agencyRelationLevel (userId, subId, topId, level) VALUES($1, $2, $3, $4)',
-                [item.userId, userId, item.topId, item.level]
-            )
-        }
-
-        await client.query('COMMIT')
-    } catch (error) {
-        await client.query('ROLLBACK')
-        console.error('注册用户失败：', error);
-        throw new Error('注册用户失败')
-    } finally {
-        client.release()
+    for (let i = 0; i < inviteInfo.length; i++) {
+        const item = inviteInfo[i];
+        const { error: insertError } = await supabase
+            .from(`agencyRelation`)
+            .insert({
+                userId: item.userId,
+                subId: userId,
+                topId: item.topId,
+                level: item.level + 1
+            })
+        if (insertError) throw insertError
     }
 }
